@@ -225,8 +225,8 @@ public class WttrInClient implements WeatherClient {
 
         try {
             return RetryUtils.executeWithRetry(() -> {
-                // Wttr.in supports coordinates in format @lat,lon
-                String coords = String.format("@%.4f,%.4f", latitude, longitude);
+                // wttr.in accepts coordinates in lat,lon format (without @)
+                String coords = String.format("%.4f,%.4f", latitude, longitude);
                 String url = String.format("%s/%s?format=j1", WTTR_BASE_URL, coords);
 
                 ResponseEntity<WttrInResponse> response = restTemplate.getForEntity(url, WttrInResponse.class);
