@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.dependency.management)
+}
+
+bootJar {
+    enabled = true
+}
+
+springBoot {
+    mainClass = 'io.github.solas.mcp.weather.server.WeatherMcpServerApplication'
+}
+
+dependencies {
+    implementation project(':api')
+    implementation project(':client')
+    implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.actuator
+    implementation libs.jakarta.servlet.api
+    implementation libs.mcp.core
+    implementation libs.mcp.json.jackson2
+    implementation libs.lombok
+    annotationProcessor libs.lombok
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit.jupiter
+    testImplementation libs.spring.boot.starter.test
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

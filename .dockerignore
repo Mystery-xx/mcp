@@ -1,0 +1,12 @@
+.git
+.omo
+build/
+**.class
+**.war
+**.ear
+.gradle/
+.idea/
+*.iml
+.gitignore
+README.md
+*.md

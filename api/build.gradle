@@ -1,0 +1,25 @@
+plugins {
+    id 'java-library'
+    alias(libs.plugins.dependency.management)
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+dependencies {
+    api libs.jackson.annotations
+    api libs.jackson.databind
+
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+}
+
+test {
+    useJUnitPlatform()
+}

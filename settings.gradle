@@ -1,0 +1,3 @@
+rootProject.name = 'weather-mcp-server'
+
+include 'api', 'client', 'server'
