@@ -208,4 +208,62 @@ public class WttrInClient implements WeatherClient {
         }
         return 0.0;
     }
+
+    @Override
+    public List<DailyForecast> getForecastByCoords(double latitude, double longitude, int days) throws WeatherApiException {
+        if (days < 1 || days > 16) {
+            throw new IllegalArgumentException("Days parameter must be between 1 and 16, got: " + days);
+        }
+
+        if (latitude < -90 || latitude > 90) {
+            throw new IllegalArgumentException("Latitude must be between -90 and 90, got: " + latitude);
+        }
+
+        if (longitude < -180 || longitude > 180) {
+            throw new IllegalArgumentException("Longitude must be between -180 and 180, got: " + longitude);
+        }
+
+        try {
+            return RetryUtils.executeWithRetry(() -> {
+                // Wttr.in supports coordinates in format @lat,lon
+                String coords = String.format("@%.4f,%.4f", latitude, longitude);
+                String url = String.format("%s/%s?format=j1", WTTR_BASE_URL, coords);
+
+                ResponseEntity<WttrInResponse> response = restTemplate.getForEntity(url, WttrInResponse.class);
+
+                if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+                    throw WeatherApiException.apiError("No forecast data available for coordinates: " + latitude + ", " + longitude);
+                }
+
+                WttrInResponse wttrResponse = response.getBody();
+                List<WttrInResponse.Weather> weatherList = wttrResponse.getWeather();
+
+                if (weatherList == null || weatherList.isEmpty()) {
+                    throw WeatherApiException.apiError("No weather forecast data available for coordinates: " + latitude + ", " + longitude);
+                }
+
+                List<DailyForecast> forecasts = new ArrayList<>();
+                int forecastCount = Math.min(days, weatherList.size());
+
+                for (int i = 0; i < forecastCount; i++) {
+                    WttrInResponse.Weather weather = weatherList.get(i);
+                    int weatherCode = getDailyWeatherCode(weather);
+
+                    forecasts.add(new DailyForecast(
+                        weather.getDate(),
+                        weather.getMaxTempC(),
+                        weather.getMinTempC(),
+                        getPrecipitationSum(weather),
+                        weatherCode
+                    ));
+                }
+
+                return forecasts;
+            });
+        } catch (WeatherApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw WeatherApiException.apiError("Failed to get forecast for coordinates " + latitude + ", " + longitude + ": " + e.getMessage());
+        }
+    }
 }

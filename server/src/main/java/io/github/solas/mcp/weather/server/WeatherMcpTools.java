@@ -84,6 +84,24 @@ public class WeatherMcpTools {
                 .callHandler((exchange, request) -> handleSearchCity(request))
                 .build();
             server.addTool(searchTool);
+
+            // Register get_forecast_by_coords tool
+            Map<String, Object> forecastByCoordsSchema = Map.of(
+                "type", "object",
+                "properties", Map.of(
+                    "latitude", Map.of("type", "number", "description", "Latitude coordinate (-90 to 90)"),
+                    "longitude", Map.of("type", "number", "description", "Longitude coordinate (-180 to 180)"),
+                    "days", Map.of("type", "integer", "description", "Number of days (1-16, default: 7)")
+                ),
+                "required", List.of("latitude", "longitude")
+            );
+            McpServerFeatures.SyncToolSpecification forecastByCoordsTool = McpServerFeatures.SyncToolSpecification.builder()
+                .tool(McpSchema.Tool.builder("get_forecast_by_coords", forecastByCoordsSchema)
+                    .description("Get weather forecast by geographic coordinates")
+                    .build())
+                .callHandler((exchange, request) -> handleGetForecastByCoords(request))
+                .build();
+            server.addTool(forecastByCoordsTool);
         } catch (Exception e) {
             throw new RuntimeException("Failed to register MCP tools", e);
         }
@@ -246,6 +264,69 @@ public class WeatherMcpTools {
 
             return new McpSchema.CallToolResult(content, false, null, null);
 
+        } catch (WeatherApiException e) {
+            return createErrorResult("Error: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            return createErrorResult("Error formatting response: " + e.getMessage());
+        } catch (Exception e) {
+            return createErrorResult("Unexpected error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle get_forecast_by_coords tool call.
+     * Returns dual TextContent: human-readable summary + JSON array.
+     */
+    McpSchema.CallToolResult handleGetForecastByCoords(McpSchema.CallToolRequest request) {
+        try {
+            Object latObj = request.arguments().get("latitude");
+            Object lonObj = request.arguments().get("longitude");
+            Object daysObj = request.arguments().get("days");
+
+            if (latObj == null || lonObj == null) {
+                return createErrorResult("Latitude and longitude parameters are required");
+            }
+
+            double latitude = ((Number) latObj).doubleValue();
+            double longitude = ((Number) lonObj).doubleValue();
+            int days = (daysObj instanceof Number) ? ((Number) daysObj).intValue() : 7;
+
+            // Validate days parameter
+            if (days < 1 || days > 16) {
+                return createErrorResult(String.format("Days parameter must be between 1 and 16, got: %d", days));
+            }
+
+            List<DailyForecast> forecast = weatherClient.getForecastByCoords(latitude, longitude, days);
+
+            // Create human-readable summary
+            String summary = String.format("%d-day forecast for coordinates (%.4f, %.4f):", days, latitude, longitude);
+
+            StringBuilder details = new StringBuilder(summary);
+            for (DailyForecast day : forecast) {
+                details.append(String.format("\n  %s: %.1f°C / %.1f°C, осадки %.1f мм, код погоды %d",
+                    day.date(), day.temperatureMax(), day.temperatureMin(),
+                    day.precipitationSum(), day.weatherCode()));
+            }
+
+            // Create JSON array
+            String jsonData = objectMapper.writeValueAsString(forecast.stream()
+                .map(d -> Map.of(
+                    "date", d.date(),
+                    "temperatureMax", d.temperatureMax(),
+                    "temperatureMin", d.temperatureMin(),
+                    "precipitationSum", d.precipitationSum(),
+                    "weatherCode", d.weatherCode()
+                ))
+                .toList());
+
+            List<McpSchema.Content> content = new ArrayList<>();
+            content.add(new McpSchema.TextContent(details.toString()));
+            content.add(new McpSchema.TextContent(jsonData));
+
+            return new McpSchema.CallToolResult(content, false, null, null);
+
+        } catch (IllegalArgumentException e) {
+            return createErrorResult("Error: " + e.getMessage());
         } catch (WeatherApiException e) {
             return createErrorResult("Error: " + e.getMessage());
         } catch (JsonProcessingException e) {

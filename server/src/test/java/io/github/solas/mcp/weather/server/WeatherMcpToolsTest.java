@@ -614,4 +614,173 @@ class WeatherMcpToolsTest {
             assertThat(invalidDays).isGreaterThan(16);
         }
     }
+
+    @Nested
+    @DisplayName("handleGetForecastByCoords Tests")
+    class HandleGetForecastByCoordsTests {
+
+        @Test
+        @DisplayName("should return forecast with dual TextContent for valid coordinates and days")
+        void shouldReturnForecastForValidCoordinatesAndDays() throws WeatherApiException {
+            // Given
+            double latitude = 55.7522;
+            double longitude = 37.6156;
+            int days = 3;
+            List<DailyForecast> forecast = List.of(
+                new DailyForecast("2025-06-26", 22.5, 14.2, 0.0, 0),
+                new DailyForecast("2025-06-27", 24.0, 15.5, 2.5, 61),
+                new DailyForecast("2025-06-28", 21.0, 13.8, 0.5, 3)
+            );
+            when(weatherClient.getForecastByCoords(latitude, longitude, days)).thenReturn(forecast);
+
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("latitude", latitude, "longitude", longitude, "days", days),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isFalse();
+            assertThat(result.content()).hasSize(2);
+
+            // First TextContent: human-readable summary
+            String summary = ((McpSchema.TextContent) result.content().get(0)).text();
+            assertThat(summary).contains("3-day forecast for coordinates (55.7522, 37.6156)");
+            assertThat(summary).contains("2025-06-26");
+            assertThat(summary).contains("22.5°C");
+
+            // Second TextContent: JSON array
+            String jsonData = ((McpSchema.TextContent) result.content().get(1)).text();
+            assertThat(jsonData).contains("\"date\":\"2025-06-26\"");
+            assertThat(jsonData).contains("\"temperatureMax\":22.5");
+        }
+
+        @Test
+        @DisplayName("should use default days=7 when not specified")
+        void shouldUseDefaultDaysWhenNotSpecified() throws WeatherApiException {
+            // Given
+            double latitude = 48.8566;
+            double longitude = 2.3522;
+            List<DailyForecast> forecast = List.of(
+                new DailyForecast("2025-06-26", 20.0, 12.0, 0.0, 1)
+            );
+            when(weatherClient.getForecastByCoords(latitude, longitude, 7)).thenReturn(forecast);
+
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("latitude", latitude, "longitude", longitude),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isFalse();
+            String summary = ((McpSchema.TextContent) result.content().get(0)).text();
+            assertThat(summary).contains("7-day forecast for coordinates");
+        }
+
+        @Test
+        @DisplayName("should return error for missing latitude parameter")
+        void shouldReturnErrorForMissingLatitude() {
+            // Given
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("longitude", 37.6156),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isTrue();
+            assertThat(((McpSchema.TextContent) result.content().get(0)).text())
+                .contains("Latitude and longitude parameters are required");
+        }
+
+        @Test
+        @DisplayName("should return error for missing longitude parameter")
+        void shouldReturnErrorForMissingLongitude() {
+            // Given
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("latitude", 55.7522),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isTrue();
+            assertThat(((McpSchema.TextContent) result.content().get(0)).text())
+                .contains("Latitude and longitude parameters are required");
+        }
+
+        @Test
+        @DisplayName("should return error for days=0")
+        void shouldReturnErrorForZeroDays() {
+            // Given
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("latitude", 55.7522, "longitude", 37.6156, "days", 0),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isTrue();
+            assertThat(((McpSchema.TextContent) result.content().get(0)).text())
+                .contains("Days parameter must be between 1 and 16");
+        }
+
+        @Test
+        @DisplayName("should return error for days=17")
+        void shouldReturnErrorForDaysGreaterThanMax() {
+            // Given
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("latitude", 55.7522, "longitude", 37.6156, "days", 17),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isTrue();
+            assertThat(((McpSchema.TextContent) result.content().get(0)).text())
+                .contains("Days parameter must be between 1 and 16");
+        }
+
+        @Test
+        @DisplayName("should return error when WeatherClient throws exception")
+        void shouldReturnErrorWhenClientThrowsException() throws WeatherApiException {
+            // Given
+            double latitude = 55.7522;
+            double longitude = 37.6156;
+            when(weatherClient.getForecastByCoords(latitude, longitude, 5))
+                .thenThrow(WeatherApiException.apiError("No data available for coordinates"));
+
+            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(
+                "get_forecast_by_coords",
+                Map.of("latitude", latitude, "longitude", longitude, "days", 5),
+                null
+            );
+
+            // When
+            McpSchema.CallToolResult result = tools.handleGetForecastByCoords(request);
+
+            // Then
+            assertThat(result.isError()).isTrue();
+            assertThat(((McpSchema.TextContent) result.content().get(0)).text()).contains("Error:");
+        }
+    }
 }

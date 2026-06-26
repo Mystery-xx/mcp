@@ -47,4 +47,16 @@ public interface WeatherClient {
      * @throws IllegalArgumentException if days is less than 1 or greater than 16
      */
     List<DailyForecast> getForecast(String city, int days) throws WeatherApiException;
+
+    /**
+     * Get daily weather forecast by coordinates.
+     *
+     * @param latitude latitude coordinate (-90 to 90)
+     * @param longitude longitude coordinate (-180 to 180)
+     * @param days number of days to forecast (1-16)
+     * @return list of daily forecast entries
+     * @throws WeatherApiException if the request fails or coordinates are invalid
+     * @throws IllegalArgumentException if days is less than 1 or greater than 16
+     */
+    List<DailyForecast> getForecastByCoords(double latitude, double longitude, int days) throws WeatherApiException;
 }
