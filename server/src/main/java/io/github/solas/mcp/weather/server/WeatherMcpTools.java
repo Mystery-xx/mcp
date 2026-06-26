@@ -43,12 +43,12 @@ public class WeatherMcpTools {
             // Register get_current_weather tool
             Map<String, Object> currentWeatherSchema = Map.of(
                 "type", "object",
-                "properties", Map.of("city", Map.of("type", "string", "description", "City name (e.g., \"Moscow\", \"Санкт-Петербург\")")),
+                "properties", Map.of("city", Map.of("type", "string", "description", "City name in English (e.g., \"Moscow\", \"Saint Petersburg\"). Use English names for accurate geocoding.")),
                 "required", List.of("city")
             );
             McpServerFeatures.SyncToolSpecification currentWeatherTool = McpServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("get_current_weather", currentWeatherSchema)
-                    .description("Get current weather conditions for a specified city")
+                    .description("Get current weather conditions for a specified city. City name must be in English.")
                     .build())
                 .callHandler((exchange, request) -> handleGetCurrentWeather(request))
                 .build();
@@ -58,14 +58,14 @@ public class WeatherMcpTools {
             Map<String, Object> forecastSchema = Map.of(
                 "type", "object",
                 "properties", Map.of(
-                    "city", Map.of("type", "string", "description", "City name"),
+                    "city", Map.of("type", "string", "description", "City name in English (e.g., \"Moscow\", \"Saint Petersburg\"). Use English names for accurate geocoding."),
                     "days", Map.of("type", "integer", "description", "Number of days (1-16, default: 7)")
                 ),
                 "required", List.of("city")
             );
             McpServerFeatures.SyncToolSpecification forecastTool = McpServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("get_forecast", forecastSchema)
-                    .description("Get weather forecast for a specified city")
+                    .description("Get weather forecast for a specified city. City name must be in English.")
                     .build())
                 .callHandler((exchange, request) -> handleGetForecast(request))
                 .build();
@@ -74,12 +74,12 @@ public class WeatherMcpTools {
             // Register search_city tool
             Map<String, Object> searchSchema = Map.of(
                 "type", "object",
-                "properties", Map.of("query", Map.of("type", "string", "description", "Search term (city name or partial match)")),
+                "properties", Map.of("query", Map.of("type", "string", "description", "Search term in English (city name or partial match). Use English names for best results.")),
                 "required", List.of("query")
             );
             McpServerFeatures.SyncToolSpecification searchTool = McpServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("search_city", searchSchema)
-                    .description("Search for cities matching a query string")
+                    .description("Search for cities matching a query string. Query should be in English.")
                     .build())
                 .callHandler((exchange, request) -> handleSearchCity(request))
                 .build();
