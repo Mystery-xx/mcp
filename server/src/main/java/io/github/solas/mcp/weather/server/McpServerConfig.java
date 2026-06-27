@@ -1,9 +1,8 @@
 package io.github.solas.mcp.weather.server;
 
 import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
-import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
+import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -13,54 +12,23 @@ import org.springframework.context.annotation.Configuration;
 public class McpServerConfig {
 
     @Bean
-    public HttpServletStreamableServerTransportProvider streamableHttpTransport() {
-        return HttpServletStreamableServerTransportProvider.builder()
-                .mcpEndpoint("/mcp")
+    public HttpServletStatelessServerTransport statelessTransport() {
+        return HttpServletStatelessServerTransport.builder()
+                .messageEndpoint("/mcp")
                 .build();
     }
 
     @Bean
-    public ServletRegistrationBean<HttpServletStreamableServerTransportProvider> streamableHttpServlet(
-            HttpServletStreamableServerTransportProvider transportProvider) {
-        return new ServletRegistrationBean<>(transportProvider, "/mcp/*");
+    public ServletRegistrationBean<?> mcpServletRegistration(HttpServletStatelessServerTransport transport) {
+        return new ServletRegistrationBean<>(transport, "/mcp");
     }
 
     @Bean
-    public HttpServletSseServerTransportProvider sseTransportProvider() {
-        return HttpServletSseServerTransportProvider.builder()
-                .messageEndpoint("/message")
-                .build();
-    }
-
-    @Bean
-    public ServletRegistrationBean<HttpServletSseServerTransportProvider> sseServlet(
-            HttpServletSseServerTransportProvider sseTransportProvider) {
-        return new ServletRegistrationBean<>(sseTransportProvider, "/sse/*");
-    }
-
-    @Bean
-    public McpSyncServer mcpSyncServer(
-            HttpServletStreamableServerTransportProvider streamableHttpTransport,
+    public McpStatelessSyncServer mcpStatelessSyncServer(
+            HttpServletStatelessServerTransport transport,
             WeatherMcpTools weatherMcpTools) {
         
-        McpSyncServer server = McpServer.sync(streamableHttpTransport)
-                .serverInfo("weather-mcp-server", "1.0.0")
-                .capabilities(McpSchema.ServerCapabilities.builder()
-                        .tools(true)
-                        .build())
-                .build();
-        
-        weatherMcpTools.registerTools(server);
-        
-        return server;
-    }
-
-    @Bean
-    public McpSyncServer mcpSseSyncServer(
-            HttpServletSseServerTransportProvider sseTransportProvider,
-            WeatherMcpTools weatherMcpTools) {
-        
-        McpSyncServer server = McpServer.sync(sseTransportProvider)
+        McpStatelessSyncServer server = McpServer.sync(transport)
                 .serverInfo("weather-mcp-server", "1.0.0")
                 .capabilities(McpSchema.ServerCapabilities.builder()
                         .tools(true)

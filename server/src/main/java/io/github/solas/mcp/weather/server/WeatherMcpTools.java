@@ -7,8 +7,9 @@ import io.github.solas.mcp.weather.api.DailyForecast;
 import io.github.solas.mcp.weather.api.Location;
 import io.github.solas.mcp.weather.api.WeatherApiException;
 import io.github.solas.mcp.weather.api.WeatherClient;
-import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.common.McpTransportContext;
+import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +35,7 @@ public class WeatherMcpTools {
     /**
      * Register MCP tools with the server.
      */
-    public void registerTools(McpSyncServer server) {
+    public void registerTools(McpStatelessSyncServer server) {
         if (server == null) {
             return;
         }
@@ -46,11 +47,11 @@ public class WeatherMcpTools {
                 "properties", Map.of("city", Map.of("type", "string", "description", "City name in English (e.g., \"Moscow\", \"Saint Petersburg\"). Use English names for accurate geocoding.")),
                 "required", List.of("city")
             );
-            McpServerFeatures.SyncToolSpecification currentWeatherTool = McpServerFeatures.SyncToolSpecification.builder()
+            McpStatelessServerFeatures.SyncToolSpecification currentWeatherTool = McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("get_current_weather", currentWeatherSchema)
                     .description("Get current weather conditions for a specified city. City name must be in English.")
                     .build())
-                .callHandler((exchange, request) -> handleGetCurrentWeather(request))
+                .callHandler((transportContext, request) -> handleGetCurrentWeather(request))
                 .build();
             server.addTool(currentWeatherTool);
 
@@ -63,11 +64,11 @@ public class WeatherMcpTools {
                 ),
                 "required", List.of("city")
             );
-            McpServerFeatures.SyncToolSpecification forecastTool = McpServerFeatures.SyncToolSpecification.builder()
+            McpStatelessServerFeatures.SyncToolSpecification forecastTool = McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("get_forecast", forecastSchema)
                     .description("Get weather forecast for a specified city. City name must be in English.")
                     .build())
-                .callHandler((exchange, request) -> handleGetForecast(request))
+                .callHandler((transportContext, request) -> handleGetForecast(request))
                 .build();
             server.addTool(forecastTool);
 
@@ -77,11 +78,11 @@ public class WeatherMcpTools {
                 "properties", Map.of("query", Map.of("type", "string", "description", "Search term in English (city name or partial match). Use English names for best results.")),
                 "required", List.of("query")
             );
-            McpServerFeatures.SyncToolSpecification searchTool = McpServerFeatures.SyncToolSpecification.builder()
+            McpStatelessServerFeatures.SyncToolSpecification searchTool = McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("search_city", searchSchema)
                     .description("Search for cities matching a query string. Query should be in English.")
                     .build())
-                .callHandler((exchange, request) -> handleSearchCity(request))
+                .callHandler((transportContext, request) -> handleSearchCity(request))
                 .build();
             server.addTool(searchTool);
 
@@ -95,11 +96,11 @@ public class WeatherMcpTools {
                 ),
                 "required", List.of("latitude", "longitude")
             );
-            McpServerFeatures.SyncToolSpecification forecastByCoordsTool = McpServerFeatures.SyncToolSpecification.builder()
+            McpStatelessServerFeatures.SyncToolSpecification forecastByCoordsTool = McpStatelessServerFeatures.SyncToolSpecification.builder()
                 .tool(McpSchema.Tool.builder("get_forecast_by_coords", forecastByCoordsSchema)
                     .description("Get weather forecast by geographic coordinates")
                     .build())
-                .callHandler((exchange, request) -> handleGetForecastByCoords(request))
+                .callHandler((transportContext, request) -> handleGetForecastByCoords(request))
                 .build();
             server.addTool(forecastByCoordsTool);
         } catch (Exception e) {
